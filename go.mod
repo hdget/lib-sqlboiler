@@ -3,7 +3,7 @@ module github.com/hdget/lib-sqlboiler
 go 1.23.1
 
 require (
-	github.com/hdget/common v0.0.1
+	github.com/hdget/common v0.0.7
 	github.com/hdget/utils v0.0.1
 	github.com/volatiletech/sqlboiler/v4 v4.18.0
 )
@@ -13,7 +13,6 @@ require (
 	github.com/elliotchance/pie/v2 v2.9.1 // indirect
 	github.com/friendsofgo/errors v0.9.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/jmoiron/sqlx v1.4.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
