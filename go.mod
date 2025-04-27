@@ -3,7 +3,7 @@ module github.com/hdget/lib-sqlboiler
 go 1.23.1
 
 require (
-	github.com/hdget/common v0.0.7
+	github.com/hdget/common v0.0.9
 	github.com/hdget/utils v0.0.1
 	github.com/volatiletech/sqlboiler/v4 v4.18.0
 )
