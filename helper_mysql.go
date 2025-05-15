@@ -15,7 +15,7 @@ type mysqlHelper struct {
 
 func Mysql() SQLHelper {
 	return &mysqlHelper{
-		&baseHelper{quote: "`"},
+		&baseHelper{quote: MysqlIdentifierQuote},
 	}
 }
 

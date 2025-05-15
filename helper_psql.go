@@ -15,7 +15,7 @@ type psqlHelper struct {
 
 func Psql() SQLHelper {
 	return &psqlHelper{
-		&baseHelper{quote: "\""},
+		&baseHelper{quote: PsqlIdentifierQuote},
 	}
 }
 

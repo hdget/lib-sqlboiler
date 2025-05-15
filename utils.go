@@ -6,6 +6,19 @@ import (
 	"strings"
 )
 
+const (
+	MysqlIdentifierQuote = "`"
+	PsqlIdentifierQuote  = "\""
+)
+
+func MysqlEscape(s string) string {
+	return escape(s, MysqlIdentifierQuote)
+}
+
+func PsqlEscape(s string) string {
+	return escape(s, PsqlIdentifierQuote)
+}
+
 func escape(s, quote string) string {
 	escaped := pie.Map(strings.Split(s, "."), func(v string) string {
 		return quoteString(v, quote)
