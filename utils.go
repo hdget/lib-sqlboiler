@@ -21,11 +21,11 @@ func PsqlEscape(s string) string {
 
 func escape(s, quote string) string {
 	escaped := pie.Map(strings.Split(s, "."), func(v string) string {
-		return QuoteString(v, quote)
+		return quoteString(v, quote)
 	})
 	return strings.Join(escaped, ".")
 }
 
-func QuoteString(s, quote string) string {
+func quoteString(s, quote string) string {
 	return fmt.Sprintf("%s%s%s", quote, s, quote)
 }
