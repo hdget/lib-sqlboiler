@@ -9,14 +9,17 @@ import (
 	"reflect"
 )
 
-type PsqlImpl struct {
+type mysqlHelper struct {
+	*baseHelper
 }
 
-func Psql() *PsqlImpl {
-	return &PsqlImpl{}
+func Mysql() SQLHelper {
+	return &mysqlHelper{
+		&baseHelper{quote: "`"},
+	}
 }
 
-func (*PsqlImpl) IfNull(column string, defaultValue any, args ...string) string {
+func (mysqlHelper) IfNull(column string, defaultValue any, args ...string) string {
 	alias := column
 	if len(args) > 0 {
 		alias = args[0]
@@ -48,44 +51,48 @@ func (*PsqlImpl) IfNull(column string, defaultValue any, args ...string) string 
 	return fmt.Sprintf("COALESCE((%s), '%v') AS \"%s\"", column, defaultValue, alias)
 }
 
-func (*PsqlImpl) IfNullWithColumn(column string, anotherColumn string, args ...string) string {
+func (mysqlHelper) IfNullWithColumn(column string, anotherColumn string, args ...string) string {
 	alias := column
 	if len(args) > 0 {
 		alias = args[0]
 	}
-	return fmt.Sprintf("COALESCE(%s, %s) AS \"%s\"", column, anotherColumn, alias)
+	return fmt.Sprintf("IFNULL((%s), %s) AS \"%s\"", column, anotherColumn, alias)
 }
 
-func (*PsqlImpl) JsonValue(jsonColumn string, jsonKey string, defaultValue any) qm.QueryMod {
+func (mysqlHelper) JsonValue(jsonColumn string, jsonKey string, defaultValue any) qm.QueryMod {
 	var template string
 	switch v := defaultValue.(type) {
 	case string:
-		template = fmt.Sprintf("COALESCE(%s->>'%s', '%s') AS %s", jsonColumn, jsonKey, v, jsonKey)
+		template = fmt.Sprintf("IFNULL(JSON_UNQUOTE(JSON_EXTRACT(%s, '$.%s')), '%s') AS %s", jsonColumn, jsonKey, v, jsonKey)
 	case int8, int, int32, int64:
-		template = fmt.Sprintf("COALESCE((%s->>'%s')::numeric, %d) AS %s", jsonColumn, jsonKey, v, jsonKey)
+		template = fmt.Sprintf("IFNULL(JSON_EXTRACT(%s, '$.%s'), %d) AS %s", jsonColumn, jsonKey, v, jsonKey)
 	case float32, float64:
-		template = fmt.Sprintf("COALESCE((%s->>'%s')::numeric, %d) AS %s", jsonColumn, jsonKey, v, jsonKey)
+		template = fmt.Sprintf("IFNULL(JSON_EXTRACT(%s, '$.%s'), %f) AS %s", jsonColumn, jsonKey, v, jsonKey)
 	default:
 		return nil
 	}
 	return qm.Select(template)
 }
 
-func (*PsqlImpl) JsonValueCompare(jsonColumn string, jsonKey string, operator string, compareValue any) qm.QueryMod {
+func (mysqlHelper) JsonValueCompare(jsonColumn string, jsonKey string, operator string, compareValue any) qm.QueryMod {
 	var template string
 	switch v := compareValue.(type) {
 	case string:
-		template = fmt.Sprintf("(%s->>'%s') %s '%s'", jsonColumn, jsonKey, operator, v)
+		template = fmt.Sprintf("JSON_UNQUOTE(JSON_EXTRACT(%s, '$.%s')) %s '%s'", jsonColumn, jsonKey, operator, v)
 	case int8, int, int32, int64:
-		template = fmt.Sprintf("(%s->>'%s') %s %d", jsonColumn, jsonKey, operator, v)
+		template = fmt.Sprintf("JSON_EXTRACT(%s, '$.%s') %s %d", jsonColumn, jsonKey, operator, v)
 	case float32, float64:
-		template = fmt.Sprintf("(%s->>'%s') %s %f", jsonColumn, jsonKey, operator, v)
+		template = fmt.Sprintf("JSON_EXTRACT(%s, '$.%s') %s %f", jsonColumn, jsonKey, operator, v)
 	default:
 		return nil
 	}
 	return qm.Where(template)
 }
 
-func (impl *PsqlImpl) SUM(col string, args ...string) string {
+func (impl mysqlHelper) SUM(col string, args ...string) string {
 	return impl.IfNull(fmt.Sprintf("SUM(%s)", col), 0, args...)
+}
+
+func (mysqlHelper) AsAliasColumn(alias, colName string) string {
+	return fmt.Sprintf("`%s`.`%s` AS `%s`.`%s`", alias, colName, alias, colName)
 }

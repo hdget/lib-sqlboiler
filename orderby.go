@@ -1,29 +1,26 @@
 package sqlboiler
 
 import (
+	"fmt"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"strings"
 )
 
-type orderByBuilder struct {
+type OrderByHelper struct {
 	tokens []string
+	quote  string
 }
 
-// OrderBy OrderBy字段加入desc
-func OrderBy() *orderByBuilder {
-	return &orderByBuilder{tokens: make([]string, 0)}
-}
-
-func (o *orderByBuilder) Desc(col string) *orderByBuilder {
-	o.tokens = append(o.tokens, col+" DESC")
+func (o *OrderByHelper) Desc(col string) *OrderByHelper {
+	o.tokens = append(o.tokens, fmt.Sprintf("%s DESC", escape(col, o.quote)))
 	return o
 }
 
-func (o *orderByBuilder) Asc(col string) *orderByBuilder {
-	o.tokens = append(o.tokens, col+" ASC")
+func (o *OrderByHelper) Asc(col string) *OrderByHelper {
+	o.tokens = append(o.tokens, fmt.Sprintf("%s ASC", escape(col, o.quote)))
 	return o
 }
 
-func (o orderByBuilder) Output(args ...any) qm.QueryMod {
+func (o OrderByHelper) Output(args ...any) qm.QueryMod {
 	return qm.OrderBy(strings.Join(o.tokens, ","), args...)
 }

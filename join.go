@@ -15,54 +15,64 @@ const (
 	joinKindRight
 )
 
-type joinClause struct {
+type JoinClauseBuilder struct {
 	kind      joinKind
 	joinTable string
 	asTable   string
 	clauses   []string
+	quote     string
 }
 
-func InnerJoin(joinTable string, args ...string) *joinClause {
+func innerJoin(quote, joinTable string, args ...string) *JoinClauseBuilder {
 	var asTable string
 	if len(args) > 0 {
-		asTable = args[0]
+		asTable = escape(args[0], quote)
 	}
-	return &joinClause{
+	return &JoinClauseBuilder{
 		kind:      joinKindInner,
-		joinTable: joinTable,
+		joinTable: escape(joinTable, quote),
 		asTable:   asTable,
 		clauses:   make([]string, 0),
+		quote:     quote,
 	}
 }
 
-func LeftJoin(joinTable string, args ...string) *joinClause {
+func leftJoin(quote, joinTable string, args ...string) *JoinClauseBuilder {
 	var asTable string
 	if len(args) > 0 {
-		asTable = args[0]
+		asTable = escape(args[0], quote)
 	}
-	return &joinClause{
+	return &JoinClauseBuilder{
 		kind:      joinKindLeft,
-		joinTable: joinTable,
+		joinTable: escape(joinTable, quote),
 		asTable:   asTable,
 		clauses:   make([]string, 0),
+		quote:     quote,
 	}
 }
 
-func (j *joinClause) On(columnOrTableColumn, thatTableColumn string) *joinClause {
+func (j *JoinClauseBuilder) On(columnOrTableColumn, thatTableColumn string) *JoinClauseBuilder {
+	leftColumn := escape(columnOrTableColumn, j.quote)
+	rightColumn := escape(thatTableColumn, j.quote)
 	if j.asTable != "" {
-		j.clauses = append(j.clauses, fmt.Sprintf("%s AS %s ON %s.%s=%s", j.joinTable, j.asTable, j.asTable, columnOrTableColumn, thatTableColumn))
+		j.clauses = append(j.clauses, fmt.Sprintf("%s AS %s ON %s.%s=%s", j.joinTable, j.asTable, j.asTable, leftColumn, rightColumn))
 	} else {
-		j.clauses = append(j.clauses, fmt.Sprintf("%s ON %s=%s", j.joinTable, columnOrTableColumn, thatTableColumn))
+		j.clauses = append(j.clauses, fmt.Sprintf("%s ON %s=%s", j.joinTable, leftColumn, rightColumn))
 	}
 	return j
 }
 
-func (j *joinClause) And(clause string) *joinClause {
+func (j *JoinClauseBuilder) And(clause string) *JoinClauseBuilder {
 	j.clauses = append(j.clauses, clause)
 	return j
 }
 
-func (j *joinClause) Output(args ...any) qm.QueryMod {
+func (j *JoinClauseBuilder) Output(args ...any) qm.QueryMod {
+	for _, clause := range j.clauses {
+		fs := strings.Fields(clause)
+		fmt.Println(fs)
+	}
+
 	switch j.kind {
 	case joinKindInner:
 		return qm.InnerJoin(strings.Join(j.clauses, " AND "), args...)
