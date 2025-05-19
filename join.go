@@ -68,11 +68,6 @@ func (j *JoinClauseBuilder) And(clause string) *JoinClauseBuilder {
 }
 
 func (j *JoinClauseBuilder) Output(args ...any) qm.QueryMod {
-	for _, clause := range j.clauses {
-		fs := strings.Fields(clause)
-		fmt.Println(fs)
-	}
-
 	switch j.kind {
 	case joinKindInner:
 		return qm.InnerJoin(strings.Join(j.clauses, " AND "), args...)
