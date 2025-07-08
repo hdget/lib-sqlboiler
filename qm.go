@@ -1,8 +1,8 @@
 package sqlboiler
 
 import (
+	"github.com/aarondl/sqlboiler/v4/queries/qm"
 	"github.com/hdget/common/protobuf"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type qmBuilder struct {

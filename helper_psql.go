@@ -2,10 +2,10 @@ package sqlboiler
 
 import (
 	"fmt"
+	"github.com/aarondl/sqlboiler/v4/queries/qm"
 	"github.com/hdget/utils/convert"
 	jsonUtils "github.com/hdget/utils/json"
 	reflectUtils "github.com/hdget/utils/reflect"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"reflect"
 )
 
