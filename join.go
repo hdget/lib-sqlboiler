@@ -2,7 +2,7 @@ package sqlboiler
 
 import (
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/aarondl/sqlboiler/v4/queries/qm"
 	"strings"
 )
 

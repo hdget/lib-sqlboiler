@@ -1,10 +1,10 @@
 package sqlboiler
 
 import (
+	"github.com/aarondl/sqlboiler/v4/boil"
+	"github.com/aarondl/sqlboiler/v4/queries/qm"
 	"github.com/hdget/common/protobuf"
 	"github.com/hdget/utils/paginator"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"time"
 )
 

@@ -2,9 +2,9 @@ package sqlboiler
 
 import (
 	"context"
+	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/hdget/common/intf"
 	loggerUtils "github.com/hdget/utils/logger"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type Transactor interface {
