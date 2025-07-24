@@ -18,10 +18,22 @@ type SQLHelper interface {
 	InnerJoin(joinTable string, args ...string) *JoinClauseBuilder
 	LeftJoin(joinTable string, args ...string) *JoinClauseBuilder
 	OrderBy() *OrderByHelper
+	Quote(s string) string
+	SelectAll(tableName string) qm.QueryMod
 }
 
 type baseHelper struct {
 	quote string //  identifier quote
+}
+
+func (b baseHelper) SelectAll(tableName string) qm.QueryMod {
+	return qm.Select(
+		b.Quote(tableName) + ".*",
+	)
+}
+
+func (b baseHelper) Quote(s string) string {
+	return escape(s, b.quote)
 }
 
 func (b baseHelper) InnerJoin(joinTable string, asTable ...string) *JoinClauseBuilder {

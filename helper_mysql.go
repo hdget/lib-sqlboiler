@@ -13,9 +13,13 @@ type mysqlHelper struct {
 	*baseHelper
 }
 
+const (
+	mysqlIdentifierQuote = "`"
+)
+
 func Mysql() SQLHelper {
 	return &mysqlHelper{
-		&baseHelper{quote: MysqlIdentifierQuote},
+		&baseHelper{quote: mysqlIdentifierQuote},
 	}
 }
 
@@ -89,8 +93,8 @@ func (mysqlHelper) JsonValueCompare(jsonColumn string, jsonKey string, operator 
 	return qm.Where(template)
 }
 
-func (impl mysqlHelper) SUM(col string, args ...string) string {
-	return impl.IfNull(fmt.Sprintf("SUM(%s)", col), 0, args...)
+func (h mysqlHelper) SUM(col string, args ...string) string {
+	return h.IfNull(fmt.Sprintf("SUM(%s)", col), 0, args...)
 }
 
 func (mysqlHelper) AsAliasColumn(alias, colName string) string {

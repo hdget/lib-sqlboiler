@@ -13,9 +13,13 @@ type psqlHelper struct {
 	*baseHelper
 }
 
+const (
+	psqlIdentifierQuote = "\""
+)
+
 func Psql() SQLHelper {
 	return &psqlHelper{
-		&baseHelper{quote: PsqlIdentifierQuote},
+		&baseHelper{quote: psqlIdentifierQuote},
 	}
 }
 
@@ -89,8 +93,8 @@ func (psqlHelper) JsonValueCompare(jsonColumn string, jsonKey string, operator s
 	return qm.Where(template)
 }
 
-func (impl psqlHelper) SUM(col string, args ...string) string {
-	return impl.IfNull(fmt.Sprintf("SUM(%s)", col), 0, args...)
+func (h psqlHelper) SUM(col string, args ...string) string {
+	return h.IfNull(fmt.Sprintf("SUM(%s)", col), 0, args...)
 }
 
 func (psqlHelper) AsAliasColumn(alias, colName string) string {
