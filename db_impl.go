@@ -39,16 +39,17 @@ var (
 	timeType           = reflect.TypeOf(time.Time{})
 	errOverflow        = errors.New("integer overflow")
 	errUnsupportedType = errors.New("unsupported field type for increment")
-	// 创建操作默认忽略的字段
+	// CreateExcludes 创建操作默认忽略的字段
 	CreateExcludes = []string{"id", "version", "created", "updated", "createdat", "updatedat", "r", "l"}
-	// 编辑操作默认忽略的字段
-	EditExcludes = []string{"id", "created", "updated", "createdat", "updatedat", "r", "l"}
+	// EditExcludes 编辑操作默认忽略的字段
+	EditExcludes          = []string{"id", "created", "updated", "createdat", "updatedat", "r", "l"}
+	defaultAutoIncrFields = []string{"version"}
 )
 
 func Tdb(tid int64, tx ...Transactor) DbImpl {
 	impl := &dbImpl{
+		autoIncrFields:   defaultAutoIncrFields,
 		excludeFields:    make([]string, 0),
-		autoIncrFields:   []string{"version"},
 		jsonArrayFields:  make([]string, 0),
 		jsonObjectFields: make([]string, 0),
 		tid:              tid,
@@ -61,8 +62,8 @@ func Tdb(tid int64, tx ...Transactor) DbImpl {
 
 func Gdb(tx ...Transactor) DbImpl {
 	impl := &dbImpl{
+		autoIncrFields:   defaultAutoIncrFields,
 		excludeFields:    make([]string, 0),
-		autoIncrFields:   []string{"version"},
 		jsonArrayFields:  make([]string, 0),
 		jsonObjectFields: make([]string, 0),
 	}
