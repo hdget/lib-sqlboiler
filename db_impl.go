@@ -135,6 +135,7 @@ func (impl *dbImpl) Copy(dest any, src any) error {
 	}
 }
 
+// copyFromMap 不区分大小写
 func (impl *dbImpl) copyFromMap(to reflect.Value, from any) error {
 	props, ok := from.(map[string]any)
 	if !ok {
