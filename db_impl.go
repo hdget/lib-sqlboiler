@@ -40,9 +40,9 @@ var (
 	errOverflow        = errors.New("integer overflow")
 	errUnsupportedType = errors.New("unsupported field type for increment")
 	// CreateExcludes 创建操作默认忽略的字段
-	CreateExcludes = []string{"id", "version", "created", "updated", "createdat", "updatedat", "r", "l"}
+	CreateExcludes = []string{"id", "sn", "version", "created", "updated", "createdat", "updatedat", "r", "l"}
 	// EditExcludes 编辑操作默认忽略的字段
-	EditExcludes          = []string{"id", "created", "updated", "createdat", "updatedat", "r", "l"}
+	EditExcludes          = []string{"id", "sn", "created", "updated", "createdat", "updatedat", "r", "l"}
 	defaultAutoIncrFields = []string{"version"}
 )
 
@@ -149,7 +149,9 @@ func (impl *dbImpl) copyFromMap(to reflect.Value, from any) error {
 			continue
 		}
 
-		destField := to.FieldByName(text.Capitalize(key))
+		destField := to.FieldByNameFunc(func(s string) bool {
+			return strings.ToLower(s) == lowerCasedKey
+		})
 		if !destField.IsValid() || !destField.CanSet() {
 			continue // 忽略无效或不可导出字段
 		}
