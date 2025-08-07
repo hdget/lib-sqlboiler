@@ -189,7 +189,7 @@ func (impl *dbImpl) copyFromStruct(to reflect.Value, toType reflect.Type, from r
 
 		if pie.Contains(impl.excludeFields, lowerCasedSrcFieldName) || // 过滤指定的字段
 			!text.IsCapitalized(srcFieldName) || // 过滤未导出的字段
-			isComplexType(srcField.Type()) { // 过滤复杂类型
+			!isSupportedType(srcField.Type()) { // 过滤不支持的类型
 			continue
 		}
 
@@ -427,25 +427,18 @@ func (impl *dbImpl) handleJsonField(destField reflect.Value, srcFieldValue any, 
 	}
 }
 
-func isComplexType(t reflect.Type) bool {
+func isSupportedType(t reflect.Type) bool {
 	switch t.Kind() {
 	// 基础类型直接排除
-	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+	case reflect.String, reflect.Float64, reflect.Int64, reflect.Int,
+		reflect.Struct, reflect.Map, reflect.Slice,
+		reflect.Int8, reflect.Int16, reflect.Int32,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-		reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128, reflect.String:
-		return false
-
-	// 特殊处理：排除 []byte
-	case reflect.Slice:
-		return t.Elem().Kind() != reflect.Uint8 // 若元素不是 uint8（byte），视为复杂类型
-
-	// 明确归类为复杂类型
-	case reflect.Struct, reflect.Map, reflect.Func, reflect.Chan, reflect.Interface:
+		reflect.Bool, reflect.Float32:
 		return true
-
 	// 指针/数组：递归检查其指向或包含的类型
 	case reflect.Ptr, reflect.Array:
-		return isComplexType(t.Elem())
+		return isSupportedType(t.Elem())
 
 	// 其他类型（如 UnsafePointer）视为基础类型
 	default:
