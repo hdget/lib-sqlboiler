@@ -17,7 +17,8 @@ import (
 )
 
 type DbImpl interface {
-	Exclude(fieldNames ...string) DbImpl    // 设置排除字段
+	Blacklist(fieldNames ...string) DbImpl  // 设置黑名单字段
+	Whitelist(fieldNames ...string) DbImpl  // 设置白名单字段
 	AutoIncr(fieldNames ...string) DbImpl   // 设置自增字段
 	JSONArray(fieldNames ...string) DbImpl  // 设置为Json数组的字段
 	JSONObject(fieldNames ...string) DbImpl // 设置Json字段的处理函数为Json数组
@@ -29,10 +30,10 @@ type DbImpl interface {
 type dbImpl struct {
 	tx               Transactor
 	tid              int64
-	excludeFields    []string
-	autoIncrFields   []string
-	jsonArrayFields  []string
-	jsonObjectFields []string
+	excludeFields    map[string]struct{}
+	autoIncrFields   map[string]struct{}
+	jsonArrayFields  map[string]struct{}
+	jsonObjectFields map[string]struct{}
 }
 
 // 预定义常用类型反射对象避免重复创建
@@ -40,19 +41,31 @@ var (
 	timeType           = reflect.TypeOf(time.Time{})
 	errOverflow        = errors.New("integer overflow")
 	errUnsupportedType = errors.New("unsupported field type for increment")
-	// CreateExcludes 创建操作默认忽略的字段
-	CreateExcludes = []string{"id", "sn", "version", "created", "updated", "created_at", "updated_at", "deleted_at", "r", "l"}
-	// EditExcludes 编辑操作默认忽略的字段
-	EditExcludes          = []string{"id", "sn", "created", "updated", "created_at", "updated_at", "deleted_at", "r", "l"}
-	defaultAutoIncrFields = []string{"version"}
+	// defaultExcludeFields 赋值操作默认忽略的字段
+	defaultExcludeFields = map[string]struct{}{
+		"id":         {},
+		"sn":         {},
+		"version":    {},
+		"created":    {},
+		"updated":    {},
+		"created_at": {},
+		"updated_at": {},
+		"deleted_at": {},
+		"r":          {},
+		"l":          {},
+	}
+	// 自增字段
+	defaultAutoIncrFields = map[string]struct{}{
+		"version": {},
+	}
 )
 
 func Tdb(tid int64, tx ...Transactor) DbImpl {
 	impl := &dbImpl{
 		autoIncrFields:   defaultAutoIncrFields,
-		excludeFields:    make([]string, 0),
-		jsonArrayFields:  make([]string, 0),
-		jsonObjectFields: make([]string, 0),
+		excludeFields:    defaultExcludeFields,
+		jsonArrayFields:  make(map[string]struct{}),
+		jsonObjectFields: make(map[string]struct{}),
 		tid:              tid,
 	}
 	if len(tx) > 0 {
@@ -64,9 +77,9 @@ func Tdb(tid int64, tx ...Transactor) DbImpl {
 func Gdb(tx ...Transactor) DbImpl {
 	impl := &dbImpl{
 		autoIncrFields:   defaultAutoIncrFields,
-		excludeFields:    make([]string, 0),
-		jsonArrayFields:  make([]string, 0),
-		jsonObjectFields: make([]string, 0),
+		excludeFields:    defaultExcludeFields,
+		jsonArrayFields:  make(map[string]struct{}),
+		jsonObjectFields: make(map[string]struct{}),
 	}
 	if len(tx) > 0 {
 		impl.tx = tx[0]
@@ -85,34 +98,77 @@ func (impl *dbImpl) Tid() int64 {
 	return impl.tid
 }
 
-func (impl *dbImpl) Exclude(fields ...string) DbImpl {
-	impl.excludeFields = pie.Map(fields, func(v string) string {
+func (impl *dbImpl) Blacklist(fields ...string) DbImpl {
+	excludeFields := pie.Map(fields, func(v string) string {
 		return format(v)
 	})
+
+	for _, field := range excludeFields {
+		impl.excludeFields[field] = struct{}{}
+	}
+
+	if len(fields) == 0 {
+		impl.excludeFields = map[string]struct{}{}
+	}
+
+	return impl
+}
+
+func (impl *dbImpl) Whitelist(fields ...string) DbImpl {
+	whitelistFields := pie.Map(fields, func(v string) string {
+		return format(v)
+	})
+
+	for _, field := range whitelistFields {
+		delete(impl.excludeFields, field)
+	}
+
+	if len(fields) == 0 {
+		impl.excludeFields = map[string]struct{}{}
+	}
 
 	return impl
 }
 
 func (impl *dbImpl) AutoIncr(fields ...string) DbImpl {
-	impl.autoIncrFields = pie.Map(fields, func(v string) string {
+	autoIncrFields := pie.Map(fields, func(v string) string {
 		return format(v)
 	})
+
+	for _, field := range autoIncrFields {
+		impl.autoIncrFields[field] = struct{}{}
+	}
+
+	if len(autoIncrFields) == 0 {
+		impl.autoIncrFields = map[string]struct{}{}
+	}
+
 	return impl
 }
 
 // JSONArray 设置Json字段为JSON Array类型
 func (impl *dbImpl) JSONArray(fields ...string) DbImpl {
-	impl.jsonArrayFields = pie.Map(fields, func(v string) string {
+	jsonArrayFields := pie.Map(fields, func(v string) string {
 		return format(v)
 	})
+
+	for _, field := range jsonArrayFields {
+		impl.jsonArrayFields[field] = struct{}{}
+	}
+
 	return impl
 }
 
 // JSONObject 设置Json字段为JSON Object类型
 func (impl *dbImpl) JSONObject(fields ...string) DbImpl {
-	impl.jsonObjectFields = pie.Map(fields, func(v string) string {
+	jsonObjectFields := pie.Map(fields, func(v string) string {
 		return format(v)
 	})
+
+	for _, field := range jsonObjectFields {
+		impl.jsonObjectFields[field] = struct{}{}
+	}
+
 	return impl
 }
 
@@ -147,7 +203,7 @@ func (impl *dbImpl) copyFromMap(to reflect.Value, from any) error {
 		formattedKey := format(key)
 
 		// 排除不需要的字段
-		if pie.Contains(impl.excludeFields, formattedKey) {
+		if _, exist := impl.excludeFields[formattedKey]; exist {
 			continue
 		}
 
@@ -159,13 +215,13 @@ func (impl *dbImpl) copyFromMap(to reflect.Value, from any) error {
 		}
 
 		// 类型转换并设置字段值
-		if pie.Contains(impl.autoIncrFields, formattedKey) {
+		if _, exist := impl.autoIncrFields[formattedKey]; exist {
 			if err := impl.incrField(destField, value); err != nil {
 				return errors.Wrap(err, "increase field value")
 			}
-		} else if pie.Contains(impl.jsonObjectFields, formattedKey) {
+		} else if _, exist := impl.jsonObjectFields[formattedKey]; exist {
 			impl.handleJsonField(destField, value, jsonUtils.JsonObject)
-		} else if pie.Contains(impl.jsonArrayFields, formattedKey) {
+		} else if _, exist := impl.jsonArrayFields[formattedKey]; exist {
 			impl.handleJsonField(destField, value, jsonUtils.JsonArray)
 		} else {
 			if err := impl.setField(destField, reflect.ValueOf(value), value); err != nil {
@@ -186,7 +242,7 @@ func (impl *dbImpl) copyFromStruct(to reflect.Value, toType reflect.Type, from r
 
 		srcFormattedFieldName := format(srcFieldName)
 
-		if pie.Contains(impl.excludeFields, srcFormattedFieldName) || // 过滤指定的字段
+		if _, exist := impl.excludeFields[srcFormattedFieldName]; exist || // 过滤指定的字段
 			!text.IsCapitalized(srcFieldName) || // 过滤未导出的字段
 			!isSupportedType(srcField.Type()) { // 过滤不支持的类型
 			continue
@@ -206,13 +262,13 @@ func (impl *dbImpl) copyFromStruct(to reflect.Value, toType reflect.Type, from r
 		destFormattedFieldName := format(destFieldName)
 		if srcField, exists := srcFieldName2srcField[destFormattedFieldName]; exists {
 			// 类型转换并设置字段值
-			if pie.Contains(impl.autoIncrFields, destFormattedFieldName) {
+			if _, exist := impl.autoIncrFields[destFormattedFieldName]; exist {
 				if err := impl.incrField(destField, srcField.Interface()); err != nil {
 					return errors.Wrap(err, "increase field value")
 				}
-			} else if pie.Contains(impl.jsonObjectFields, destFormattedFieldName) {
+			} else if _, exist := impl.jsonObjectFields[destFormattedFieldName]; exist {
 				impl.handleJsonField(destField, srcField.Interface(), jsonUtils.JsonObject)
-			} else if pie.Contains(impl.jsonArrayFields, destFormattedFieldName) {
+			} else if _, exist := impl.jsonArrayFields[destFormattedFieldName]; exist {
 				impl.handleJsonField(destField, srcField.Interface(), jsonUtils.JsonArray)
 			} else {
 				srcField, _ = indirect(srcField)
