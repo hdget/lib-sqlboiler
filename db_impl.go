@@ -7,6 +7,7 @@ import (
 	"github.com/elliotchance/pie/v2"
 	jsonUtils "github.com/hdget/utils/json"
 	"github.com/hdget/utils/text"
+	"github.com/iancoleman/strcase"
 	"github.com/pkg/errors"
 	"math"
 	"reflect"
@@ -40,9 +41,9 @@ var (
 	errOverflow        = errors.New("integer overflow")
 	errUnsupportedType = errors.New("unsupported field type for increment")
 	// CreateExcludes 创建操作默认忽略的字段
-	CreateExcludes = []string{"id", "sn", "version", "created", "updated", "createdat", "updatedat", "r", "l"}
+	CreateExcludes = []string{"id", "sn", "version", "created", "updated", "created_at", "updated_at", "r", "l"}
 	// EditExcludes 编辑操作默认忽略的字段
-	EditExcludes          = []string{"id", "sn", "created", "updated", "createdat", "updatedat", "r", "l"}
+	EditExcludes          = []string{"id", "sn", "created", "updated", "created_at", "updated_at", "r", "l"}
 	defaultAutoIncrFields = []string{"version"}
 )
 
@@ -86,7 +87,7 @@ func (impl *dbImpl) Tid() int64 {
 
 func (impl *dbImpl) Exclude(fields ...string) DbImpl {
 	impl.excludeFields = pie.Map(fields, func(v string) string {
-		return strings.ToLower(v)
+		return format(v)
 	})
 
 	return impl
@@ -94,7 +95,7 @@ func (impl *dbImpl) Exclude(fields ...string) DbImpl {
 
 func (impl *dbImpl) AutoIncr(fields ...string) DbImpl {
 	impl.autoIncrFields = pie.Map(fields, func(v string) string {
-		return strings.ToLower(v)
+		return format(v)
 	})
 	return impl
 }
@@ -102,7 +103,7 @@ func (impl *dbImpl) AutoIncr(fields ...string) DbImpl {
 // JSONArray 设置Json字段为JSON Array类型
 func (impl *dbImpl) JSONArray(fields ...string) DbImpl {
 	impl.jsonArrayFields = pie.Map(fields, func(v string) string {
-		return strings.ToLower(v)
+		return format(v)
 	})
 	return impl
 }
@@ -110,7 +111,7 @@ func (impl *dbImpl) JSONArray(fields ...string) DbImpl {
 // JSONObject 设置Json字段为JSON Object类型
 func (impl *dbImpl) JSONObject(fields ...string) DbImpl {
 	impl.jsonObjectFields = pie.Map(fields, func(v string) string {
-		return strings.ToLower(v)
+		return format(v)
 	})
 	return impl
 }
@@ -143,31 +144,29 @@ func (impl *dbImpl) copyFromMap(to reflect.Value, from any) error {
 	}
 
 	for key, value := range props {
-		lowerCasedKey := strings.ToLower(key)
+		formattedKey := format(key)
 
 		// 排除不需要的字段
-		if pie.Contains(impl.excludeFields, lowerCasedKey) {
+		if pie.Contains(impl.excludeFields, formattedKey) {
 			continue
 		}
 
-		destField := to.FieldByNameFunc(func(s string) bool {
-			return strings.ToLower(s) == lowerCasedKey
+		destField := to.FieldByNameFunc(func(field string) bool {
+			return format(field) == formattedKey
 		})
 		if !destField.IsValid() || !destField.CanSet() {
 			continue // 忽略无效或不可导出字段
 		}
 
 		// 类型转换并设置字段值
-		if pie.Contains(impl.autoIncrFields, lowerCasedKey) {
+		if pie.Contains(impl.autoIncrFields, formattedKey) {
 			if err := impl.incrField(destField, value); err != nil {
 				return errors.Wrap(err, "increase field value")
 			}
-		} else if pie.Contains(impl.jsonObjectFields, lowerCasedKey) {
+		} else if pie.Contains(impl.jsonObjectFields, formattedKey) {
 			impl.handleJsonField(destField, value, jsonUtils.JsonObject)
-			return nil
-		} else if pie.Contains(impl.jsonArrayFields, lowerCasedKey) {
+		} else if pie.Contains(impl.jsonArrayFields, formattedKey) {
 			impl.handleJsonField(destField, value, jsonUtils.JsonArray)
-			return nil
 		} else {
 			if err := impl.setField(destField, reflect.ValueOf(value), value); err != nil {
 				return errors.Wrapf(err, "set field '%s'", destField.Type().Name())
@@ -185,15 +184,15 @@ func (impl *dbImpl) copyFromStruct(to reflect.Value, toType reflect.Type, from r
 		srcField := from.Field(i)
 		srcFieldName := fromType.Field(i).Name
 
-		lowerCasedSrcFieldName := strings.ToLower(srcFieldName)
+		srcFormattedFieldName := format(srcFieldName)
 
-		if pie.Contains(impl.excludeFields, lowerCasedSrcFieldName) || // 过滤指定的字段
+		if pie.Contains(impl.excludeFields, srcFormattedFieldName) || // 过滤指定的字段
 			!text.IsCapitalized(srcFieldName) || // 过滤未导出的字段
 			!isSupportedType(srcField.Type()) { // 过滤不支持的类型
 			continue
 		}
 
-		srcFieldName2srcField[lowerCasedSrcFieldName] = srcField
+		srcFieldName2srcField[srcFormattedFieldName] = srcField
 	}
 
 	for i := 0; i < to.NumField(); i++ {
@@ -204,19 +203,17 @@ func (impl *dbImpl) copyFromStruct(to reflect.Value, toType reflect.Type, from r
 			continue
 		}
 
-		lowerFieldName := strings.ToLower(destFieldName)
-		if srcField, exists := srcFieldName2srcField[lowerFieldName]; exists {
+		destFormattedFieldName := format(destFieldName)
+		if srcField, exists := srcFieldName2srcField[destFormattedFieldName]; exists {
 			// 类型转换并设置字段值
-			if pie.Contains(impl.autoIncrFields, lowerFieldName) {
+			if pie.Contains(impl.autoIncrFields, destFormattedFieldName) {
 				if err := impl.incrField(destField, srcField.Interface()); err != nil {
 					return errors.Wrap(err, "increase field value")
 				}
-			} else if pie.Contains(impl.jsonObjectFields, lowerFieldName) {
+			} else if pie.Contains(impl.jsonObjectFields, destFormattedFieldName) {
 				impl.handleJsonField(destField, srcField.Interface(), jsonUtils.JsonObject)
-				return nil
-			} else if pie.Contains(impl.jsonArrayFields, lowerFieldName) {
+			} else if pie.Contains(impl.jsonArrayFields, destFormattedFieldName) {
 				impl.handleJsonField(destField, srcField.Interface(), jsonUtils.JsonArray)
-				return nil
 			} else {
 				srcField, _ = indirect(srcField)
 				if err := impl.setField(destField, srcField, srcField.Interface()); err != nil {
@@ -424,7 +421,13 @@ func (impl *dbImpl) incrField(destField reflect.Value, srcFieldValue any) error 
 func (impl *dbImpl) handleJsonField(destField reflect.Value, srcFieldValue any, fn func(...any) []byte) {
 	if isByteSlice(destField) {
 		destField.Set(reflect.ValueOf(types.JSON(fn(srcFieldValue))))
+	} else {
+		destField.Set(reflect.ValueOf(types.JSON(fn())))
 	}
+}
+
+func format(s string) string {
+	return strings.ToLower(strcase.ToSnake(s))
 }
 
 func isSupportedType(t reflect.Type) bool {
