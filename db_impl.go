@@ -41,9 +41,9 @@ var (
 	errOverflow        = errors.New("integer overflow")
 	errUnsupportedType = errors.New("unsupported field type for increment")
 	// CreateExcludes 创建操作默认忽略的字段
-	CreateExcludes = []string{"id", "sn", "version", "created", "updated", "created_at", "updated_at", "r", "l"}
+	CreateExcludes = []string{"id", "sn", "version", "created", "updated", "created_at", "updated_at", "deleted_at", "r", "l"}
 	// EditExcludes 编辑操作默认忽略的字段
-	EditExcludes          = []string{"id", "sn", "created", "updated", "created_at", "updated_at", "r", "l"}
+	EditExcludes          = []string{"id", "sn", "created", "updated", "created_at", "updated_at", "deleted_at", "r", "l"}
 	defaultAutoIncrFields = []string{"version"}
 )
 
