@@ -26,11 +26,11 @@ type JoinClauseBuilder struct {
 func innerJoin(quote, joinTable string, args ...string) *JoinClauseBuilder {
 	var asTable string
 	if len(args) > 0 {
-		asTable = escape(args[0], quote)
+		asTable = escape(args[0], quote, true)
 	}
 	return &JoinClauseBuilder{
 		kind:      joinKindInner,
-		joinTable: escape(joinTable, quote),
+		joinTable: escape(joinTable, quote, true),
 		asTable:   asTable,
 		clauses:   make([]string, 0),
 		quote:     quote,
@@ -40,11 +40,11 @@ func innerJoin(quote, joinTable string, args ...string) *JoinClauseBuilder {
 func leftJoin(quote, joinTable string, args ...string) *JoinClauseBuilder {
 	var asTable string
 	if len(args) > 0 {
-		asTable = escape(args[0], quote)
+		asTable = escape(args[0], quote, true)
 	}
 	return &JoinClauseBuilder{
 		kind:      joinKindLeft,
-		joinTable: escape(joinTable, quote),
+		joinTable: escape(joinTable, quote, true),
 		asTable:   asTable,
 		clauses:   make([]string, 0),
 		quote:     quote,
@@ -52,8 +52,8 @@ func leftJoin(quote, joinTable string, args ...string) *JoinClauseBuilder {
 }
 
 func (j *JoinClauseBuilder) On(columnOrTableColumn, thatTableColumn string) *JoinClauseBuilder {
-	leftColumn := escape(columnOrTableColumn, j.quote)
-	rightColumn := escape(thatTableColumn, j.quote)
+	leftColumn := escape(columnOrTableColumn, j.quote, true)
+	rightColumn := escape(thatTableColumn, j.quote, true)
 	if j.asTable != "" {
 		j.clauses = append(j.clauses, fmt.Sprintf("%s AS %s ON %s.%s=%s", j.joinTable, j.asTable, j.asTable, leftColumn, rightColumn))
 	} else {

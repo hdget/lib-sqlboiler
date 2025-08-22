@@ -12,12 +12,12 @@ type OrderByHelper struct {
 }
 
 func (o *OrderByHelper) Desc(col string) *OrderByHelper {
-	o.tokens = append(o.tokens, fmt.Sprintf("%s DESC", escape(col, o.quote)))
+	o.tokens = append(o.tokens, fmt.Sprintf("%s DESC", escape(col, o.quote, true)))
 	return o
 }
 
 func (o *OrderByHelper) Asc(col string) *OrderByHelper {
-	o.tokens = append(o.tokens, fmt.Sprintf("%s ASC", escape(col, o.quote)))
+	o.tokens = append(o.tokens, fmt.Sprintf("%s ASC", escape(col, o.quote, true)))
 	return o
 }
 
