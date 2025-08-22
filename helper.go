@@ -1,52 +1,102 @@
 package sqlboiler
 
 import (
+	"fmt"
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/aarondl/sqlboiler/v4/queries/qm"
 	"github.com/hdget/common/protobuf"
+	"github.com/hdget/utils/convert"
+	jsonUtils "github.com/hdget/utils/json"
 	"github.com/hdget/utils/paginator"
+	reflectUtils "github.com/hdget/utils/reflect"
+	"reflect"
 	"time"
 )
 
 type SQLHelper interface {
 	IfNull(column string, defaultValue any, args ...string) string
-	IfNullWithColumn(column string, anotherColumn string, args ...string) string
 	JsonValue(jsonColumn string, jsonKey string, defaultValue any) qm.QueryMod
 	JsonValueCompare(jsonColumn string, jsonKey string, operator string, compareValue any) qm.QueryMod
 	SUM(col string, args ...string) string
-	AsAliasColumn(alias, colName string) string
 	InnerJoin(joinTable string, args ...string) *JoinClauseBuilder
 	LeftJoin(joinTable string, args ...string) *JoinClauseBuilder
 	OrderBy() *OrderByHelper
-	Quote(s string) string
-	SelectAll(tableName string) qm.QueryMod
+	Quote(s string, needSplit bool) string
+	SelectAll(tableColumns any) qm.QueryMod
 }
 
 type baseHelper struct {
-	quote string //  identifier quote
+	identifierQuote string //  identifier quote
+	functionIfNull  string // 是否为空的函数
 }
 
-func (b baseHelper) SelectAll(tableName string) qm.QueryMod {
+func (b baseHelper) SelectAll(tableColumns any) qm.QueryMod {
+	v, _ := indirect(reflect.ValueOf(tableColumns))
+
+	selectColumns := make([]string, v.NumField())
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i).String()
+		selectColumns[i] = fmt.Sprintf("%s as %s", b.Quote(field, true), b.Quote(field, false))
+	}
+
 	return qm.Select(
-		b.Quote(tableName) + ".*",
+		selectColumns...,
 	)
 }
 
-func (b baseHelper) Quote(s string) string {
-	return escape(s, b.quote)
+func (b baseHelper) IfNull(column string, defaultValue any, args ...string) string {
+	alias := column
+	if len(args) > 0 {
+		alias = args[0]
+	}
+
+	var asValue string
+	if defaultValue == nil {
+		asValue = "''"
+	} else {
+		v := reflectUtils.Indirect(defaultValue)
+		switch vv := reflect.ValueOf(v); vv.Kind() {
+		case reflect.String:
+			asValue = b.Quote(vv.String(), true)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			asValue = fmt.Sprintf("%d", v)
+		case reflect.Float32, reflect.Float64:
+			asValue = fmt.Sprintf("%.4f", v)
+		case reflect.Slice:
+			if vv.Type().Elem().Kind() == reflect.Uint8 {
+				if jsonUtils.IsEmptyJsonObject(vv.Bytes()) {
+					asValue = "'{}'"
+				} else if jsonUtils.IsEmptyJsonArray(vv.Bytes()) {
+					asValue = "'[]'"
+				} else {
+					asValue = fmt.Sprintf("'%s'", convert.BytesToString(vv.Bytes()))
+				}
+			}
+		}
+	}
+
+	return fmt.Sprintf("%s(%s, %s) AS %s", b.functionIfNull, b.Quote(column, true), asValue, b.Quote(alias, false))
+}
+
+func (b baseHelper) SUM(col string, args ...string) string {
+	return b.IfNull(fmt.Sprintf("SUM(%s)", b.Quote(col, true)), 0, args...)
+}
+
+func (b baseHelper) Quote(s string, needSplit bool) string {
+	return escape(s, b.identifierQuote, needSplit)
 }
 
 func (b baseHelper) InnerJoin(joinTable string, asTable ...string) *JoinClauseBuilder {
-	return innerJoin(b.quote, joinTable, asTable...)
+	return innerJoin(b.identifierQuote, joinTable, asTable...)
 }
 
 func (b baseHelper) LeftJoin(joinTable string, asTable ...string) *JoinClauseBuilder {
-	return leftJoin(b.quote, joinTable, asTable...)
+	return leftJoin(b.identifierQuote, joinTable, asTable...)
 }
 
 // OrderBy OrderBy字段加入desc
 func (b baseHelper) OrderBy() *OrderByHelper {
-	return &OrderByHelper{tokens: make([]string, 0), quote: b.quote}
+	return &OrderByHelper{tokens: make([]string, 0), quote: b.identifierQuote}
 }
 
 // GetLimitQueryMods 获取Limit相关QueryMods

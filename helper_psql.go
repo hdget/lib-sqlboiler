@@ -3,10 +3,6 @@ package sqlboiler
 import (
 	"fmt"
 	"github.com/aarondl/sqlboiler/v4/queries/qm"
-	"github.com/hdget/utils/convert"
-	jsonUtils "github.com/hdget/utils/json"
-	reflectUtils "github.com/hdget/utils/reflect"
-	"reflect"
 )
 
 type psqlHelper struct {
@@ -19,48 +15,11 @@ const (
 
 func Psql() SQLHelper {
 	return &psqlHelper{
-		&baseHelper{quote: psqlIdentifierQuote},
+		&baseHelper{
+			identifierQuote: psqlIdentifierQuote,
+			functionIfNull:  "COALESCE",
+		},
 	}
-}
-
-func (psqlHelper) IfNull(column string, defaultValue any, args ...string) string {
-	alias := column
-	if len(args) > 0 {
-		alias = args[0]
-	}
-
-	if defaultValue == nil {
-		return fmt.Sprintf("COALESCE((%s), '') AS \"%s\"", column, alias)
-	}
-
-	v := reflectUtils.Indirect(defaultValue)
-
-	switch vv := reflect.ValueOf(v); vv.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return fmt.Sprintf("COALESCE((%s), %d) AS \"%s\"", column, v, alias)
-	case reflect.Float32, reflect.Float64:
-		return fmt.Sprintf("COALESCE((%s), %.4f) AS \"%s\"", column, v, alias)
-	case reflect.Slice:
-		if vv.Type().Elem().Kind() == reflect.Uint8 {
-			if jsonUtils.IsEmptyJsonObject(vv.Bytes()) {
-				return fmt.Sprintf("COALESCE((%s), '{}') AS \"%s\"", column, alias)
-			} else if jsonUtils.IsEmptyJsonArray(vv.Bytes()) {
-				return fmt.Sprintf("COALESCE((%s), '[]') AS \"%s\"", column, alias)
-			} else {
-				return fmt.Sprintf("COALESCE((%s), '%s') AS \"%s\"", column, convert.BytesToString(vv.Bytes()), alias)
-			}
-		}
-	}
-
-	return fmt.Sprintf("COALESCE((%s), '%v') AS \"%s\"", column, defaultValue, alias)
-}
-
-func (psqlHelper) IfNullWithColumn(column string, anotherColumn string, args ...string) string {
-	alias := column
-	if len(args) > 0 {
-		alias = args[0]
-	}
-	return fmt.Sprintf("COALESCE(%s, %s) AS \"%s\"", column, anotherColumn, alias)
 }
 
 func (psqlHelper) JsonValue(jsonColumn string, jsonKey string, defaultValue any) qm.QueryMod {
@@ -95,8 +54,4 @@ func (psqlHelper) JsonValueCompare(jsonColumn string, jsonKey string, operator s
 
 func (h psqlHelper) SUM(col string, args ...string) string {
 	return h.IfNull(fmt.Sprintf("SUM(%s)", col), 0, args...)
-}
-
-func (psqlHelper) AsAliasColumn(alias, colName string) string {
-	return fmt.Sprintf("\"%s\".\"%s\" AS \"%s\".\"%s\"", alias, colName, alias, colName)
 }
