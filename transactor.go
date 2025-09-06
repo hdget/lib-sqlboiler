@@ -3,7 +3,7 @@ package sqlboiler
 import (
 	"context"
 	"github.com/aarondl/sqlboiler/v4/boil"
-	"github.com/hdget/common/intf"
+	"github.com/hdget/common/types"
 	loggerUtils "github.com/hdget/utils/logger"
 )
 
@@ -17,7 +17,7 @@ type trans struct {
 	errLog func(msg string, kvs ...any)
 }
 
-func NewTransactor(logger intf.LoggerProvider) (Transactor, error) {
+func NewTransactor(logger types.LoggerProvider) (Transactor, error) {
 	tx, err := boil.BeginTx(context.Background(), nil)
 	if err != nil {
 		return nil, err
