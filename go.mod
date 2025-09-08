@@ -5,7 +5,7 @@ go 1.23.1
 require (
 	github.com/aarondl/sqlboiler/v4 v4.19.5
 	github.com/elliotchance/pie/v2 v2.9.1
-	github.com/hdget/common v0.0.23
+	github.com/hdget/common v0.0.24
 	github.com/hdget/utils v0.0.4
 	github.com/iancoleman/strcase v0.3.0
 	github.com/pkg/errors v0.9.1
