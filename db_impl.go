@@ -17,12 +17,14 @@ import (
 )
 
 type DbImpl interface {
-	Blacklist(fieldNames ...string) DbImpl  // 设置黑名单字段
-	Whitelist(fieldNames ...string) DbImpl  // 设置白名单字段
-	AutoIncr(fieldNames ...string) DbImpl   // 设置自增字段
-	JSONArray(fieldNames ...string) DbImpl  // 设置为Json数组的字段
-	JSONObject(fieldNames ...string) DbImpl // 设置Json字段的处理函数为Json数组
-	Copy(destObject any, source any) error  // 将source值填入到modelObject中
+	Blacklist(fieldNames ...string) DbImpl          // 设置黑名单字段
+	Whitelist(fieldNames ...string) DbImpl          // 设置白名单字段
+	AutoIncr(fieldNames ...string) DbImpl           // 设置自增字段
+	JSONArray(fieldNames ...string) DbImpl          // 设置为Json数组的字段
+	JSONObject(fieldNames ...string) DbImpl         // 设置Json字段的处理函数为Json数组
+	Copy(destObject any, source any) error          // 将source值填入到modelObject中
+	CopyForCreate(destObject any, source any) error // 创建动作需要的复制
+	CopyForEdit(destObject any, source any) error   // 创建动作需要的复制
 	Executor() boil.Executor
 	Tid() int64
 }
@@ -30,7 +32,8 @@ type DbImpl interface {
 type dbImpl struct {
 	tx               Transactor
 	tid              int64
-	excludeFields    map[string]struct{}
+	blacklistFields  map[string]struct{}
+	whitelistFields  map[string]struct{}
 	autoIncrFields   map[string]struct{}
 	jsonArrayFields  map[string]struct{}
 	jsonObjectFields map[string]struct{}
@@ -41,19 +44,31 @@ var (
 	timeType           = reflect.TypeOf(time.Time{})
 	errOverflow        = errors.New("integer overflow")
 	errUnsupportedType = errors.New("unsupported field type for increment")
-	// defaultExcludeFields 赋值操作默认忽略的字段
-	defaultExcludeFields = map[string]struct{}{
+
+	// editSkipFields 编辑时默认忽略的字段
+	createSkipFields = map[string]struct{}{
+		"id":         {},
+		"version":    {},
+		"created_at": {},
+		"updated_at": {},
+		"deleted_at": {},
+		"status":     {},
+		"r":          {},
+		"l":          {},
+	}
+
+	// editSkipFields 编辑时默认忽略的字段
+	editSkipFields = map[string]struct{}{
 		"id":         {},
 		"sn":         {},
 		"version":    {},
-		"created":    {},
-		"updated":    {},
 		"created_at": {},
 		"updated_at": {},
 		"deleted_at": {},
 		"r":          {},
 		"l":          {},
 	}
+
 	// 自增字段
 	defaultAutoIncrFields = map[string]struct{}{
 		"version": {},
@@ -62,11 +77,10 @@ var (
 
 func Tdb(tid int64, tx ...Transactor) DbImpl {
 	impl := &dbImpl{
-		autoIncrFields:   defaultAutoIncrFields,
-		excludeFields:    defaultExcludeFields,
-		jsonArrayFields:  make(map[string]struct{}),
-		jsonObjectFields: make(map[string]struct{}),
-		tid:              tid,
+		autoIncrFields:  defaultAutoIncrFields,
+		blacklistFields: make(map[string]struct{}),
+		whitelistFields: make(map[string]struct{}),
+		tid:             tid,
 	}
 	if len(tx) > 0 {
 		impl.tx = tx[0]
@@ -76,10 +90,9 @@ func Tdb(tid int64, tx ...Transactor) DbImpl {
 
 func Gdb(tx ...Transactor) DbImpl {
 	impl := &dbImpl{
-		autoIncrFields:   defaultAutoIncrFields,
-		excludeFields:    defaultExcludeFields,
-		jsonArrayFields:  make(map[string]struct{}),
-		jsonObjectFields: make(map[string]struct{}),
+		autoIncrFields:  defaultAutoIncrFields,
+		blacklistFields: make(map[string]struct{}),
+		whitelistFields: make(map[string]struct{}),
 	}
 	if len(tx) > 0 {
 		impl.tx = tx[0]
@@ -98,33 +111,27 @@ func (impl *dbImpl) Tid() int64 {
 	return impl.tid
 }
 
+// Blacklist 目标对象中除去blacklist的字段都会尝试拷贝
 func (impl *dbImpl) Blacklist(fields ...string) DbImpl {
-	excludeFields := pie.Map(fields, func(v string) string {
+	blacklistFields := pie.Map(fields, func(v string) string {
 		return format(v)
 	})
 
-	for _, field := range excludeFields {
-		impl.excludeFields[field] = struct{}{}
-	}
-
-	if len(fields) == 0 {
-		impl.excludeFields = map[string]struct{}{}
+	for _, field := range blacklistFields {
+		impl.blacklistFields[field] = struct{}{}
 	}
 
 	return impl
 }
 
+// Whitelist 目标对象中whitelist中出现的地段才会拷贝
 func (impl *dbImpl) Whitelist(fields ...string) DbImpl {
 	whitelistFields := pie.Map(fields, func(v string) string {
 		return format(v)
 	})
 
 	for _, field := range whitelistFields {
-		delete(impl.excludeFields, field)
-	}
-
-	if len(fields) == 0 {
-		impl.excludeFields = map[string]struct{}{}
+		impl.whitelistFields[field] = struct{}{}
 	}
 
 	return impl
@@ -138,11 +145,6 @@ func (impl *dbImpl) AutoIncr(fields ...string) DbImpl {
 	for _, field := range autoIncrFields {
 		impl.autoIncrFields[field] = struct{}{}
 	}
-
-	if len(autoIncrFields) == 0 {
-		impl.autoIncrFields = map[string]struct{}{}
-	}
-
 	return impl
 }
 
@@ -170,6 +172,16 @@ func (impl *dbImpl) JSONObject(fields ...string) DbImpl {
 	}
 
 	return impl
+}
+
+func (impl *dbImpl) CopyForCreate(dest any, src any) error {
+	impl.blacklistFields = createSkipFields
+	return impl.Copy(dest, src)
+}
+
+func (impl *dbImpl) CopyForEdit(dest any, src any) error {
+	impl.blacklistFields = editSkipFields
+	return impl.Copy(dest, src)
 }
 
 func (impl *dbImpl) Copy(dest any, src any) error {
@@ -202,9 +214,14 @@ func (impl *dbImpl) copyFromMap(to reflect.Value, from any) error {
 	for key, value := range props {
 		formattedKey := format(key)
 
-		// 排除不需要的字段
-		if _, exist := impl.excludeFields[formattedKey]; exist {
-			continue
+		if len(impl.whitelistFields) > 0 { // 如果有白名单，不在白名单中的字段都忽略, 优先级高
+			if _, exist := impl.whitelistFields[formattedKey]; !exist {
+				continue
+			}
+		} else { // 黑名单优先级低
+			if _, exist := impl.blacklistFields[formattedKey]; exist {
+				continue
+			}
 		}
 
 		destField := to.FieldByNameFunc(func(field string) bool {
@@ -242,8 +259,17 @@ func (impl *dbImpl) copyFromStruct(to reflect.Value, toType reflect.Type, from r
 
 		srcFormattedFieldName := format(srcFieldName)
 
-		if _, exist := impl.excludeFields[srcFormattedFieldName]; exist || // 过滤指定的字段
-			!text.IsCapitalized(srcFieldName) || // 过滤未导出的字段
+		if len(impl.whitelistFields) > 0 { // 如果有白名单，不在白名单中的字段都忽略, 优先级高
+			if _, exist := impl.whitelistFields[srcFormattedFieldName]; !exist {
+				continue
+			}
+		} else { // 黑名单优先级低, 在黑名单中的都忽略
+			if _, exist := impl.blacklistFields[srcFormattedFieldName]; exist {
+				continue
+			}
+		}
+
+		if !text.IsCapitalized(srcFieldName) || // 过滤未导出的字段
 			!isSupportedType(srcField.Type()) { // 过滤不支持的类型
 			continue
 		}
