@@ -77,10 +77,12 @@ var (
 
 func Tdb(tid int64, tx ...Transactor) DbImpl {
 	impl := &dbImpl{
-		autoIncrFields:  defaultAutoIncrFields,
-		blacklistFields: make(map[string]struct{}),
-		whitelistFields: make(map[string]struct{}),
-		tid:             tid,
+		tid:              tid,
+		autoIncrFields:   defaultAutoIncrFields,
+		blacklistFields:  make(map[string]struct{}),
+		whitelistFields:  make(map[string]struct{}),
+		jsonArrayFields:  make(map[string]struct{}),
+		jsonObjectFields: make(map[string]struct{}),
 	}
 	if len(tx) > 0 {
 		impl.tx = tx[0]
@@ -90,9 +92,11 @@ func Tdb(tid int64, tx ...Transactor) DbImpl {
 
 func Gdb(tx ...Transactor) DbImpl {
 	impl := &dbImpl{
-		autoIncrFields:  defaultAutoIncrFields,
-		blacklistFields: make(map[string]struct{}),
-		whitelistFields: make(map[string]struct{}),
+		autoIncrFields:   defaultAutoIncrFields,
+		blacklistFields:  make(map[string]struct{}),
+		whitelistFields:  make(map[string]struct{}),
+		jsonArrayFields:  make(map[string]struct{}),
+		jsonObjectFields: make(map[string]struct{}),
 	}
 	if len(tx) > 0 {
 		impl.tx = tx[0]
