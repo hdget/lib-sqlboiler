@@ -17,14 +17,14 @@ import (
 )
 
 type DbImpl interface {
-	Blacklist(fieldNames ...string) DbImpl          // 设置黑名单字段
-	Whitelist(fieldNames ...string) DbImpl          // 设置白名单字段
-	AutoIncr(fieldNames ...string) DbImpl           // 设置自增字段
-	JSONArray(fieldNames ...string) DbImpl          // 设置为Json数组的字段
-	JSONObject(fieldNames ...string) DbImpl         // 设置Json字段的处理函数为Json数组
-	Copy(destObject any, source any) error          // 将source值填入到modelObject中
-	CopyForCreate(destObject any, source any) error // 创建动作需要的复制
-	CopyForEdit(destObject any, source any) error   // 创建动作需要的复制
+	Blacklist(fieldNames ...string) DbImpl                                 // 设置黑名单字段
+	Whitelist(fieldNames ...string) DbImpl                                 // 设置白名单字段
+	AutoIncr(fieldNames ...string) DbImpl                                  // 设置自增字段
+	JSONArray(fieldNames ...string) DbImpl                                 // 设置为Json数组的字段
+	JSONObject(fieldNames ...string) DbImpl                                // 设置Json字段的处理函数为Json数组
+	Copy(destObject any, source any) error                                 // 将source值填入到modelObject中
+	CopyForCreate(destObject any, source any, allowFields ...string) error // 创建动作需要的复制
+	CopyForEdit(destObject any, source any, allowFields ...string) error   // 创建动作需要的复制
 	Executor() boil.Executor
 	Tid() int64
 }
@@ -174,13 +174,19 @@ func (impl *dbImpl) JSONObject(fields ...string) DbImpl {
 	return impl
 }
 
-func (impl *dbImpl) CopyForCreate(dest any, src any) error {
+func (impl *dbImpl) CopyForCreate(dest any, src any, allowFields ...string) error {
 	impl.blacklistFields = createSkipFields
+	for _, field := range allowFields {
+		delete(impl.blacklistFields, field)
+	}
 	return impl.Copy(dest, src)
 }
 
-func (impl *dbImpl) CopyForEdit(dest any, src any) error {
+func (impl *dbImpl) CopyForEdit(dest any, src any, allowFields ...string) error {
 	impl.blacklistFields = editSkipFields
+	for _, field := range allowFields {
+		delete(impl.blacklistFields, field)
+	}
 	return impl.Copy(dest, src)
 }
 
