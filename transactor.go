@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aarondl/sqlboiler/v4/boil"
+	"github.com/hdget/common/servicectx"
 	"github.com/hdget/common/types"
 	loggerUtils "github.com/hdget/utils/logger"
 )
@@ -14,6 +15,7 @@ type Transactor interface {
 }
 
 type trans struct {
+	tx     boil.Transactor
 	ctx    context.Context
 	errLog func(msg string, kvs ...any)
 }
@@ -24,8 +26,8 @@ func NewTransactor(ctx context.Context, logger types.LoggerProvider) (Transactor
 		errLog = logger.Error
 	}
 
-	if _, ok := ctx.Value(types.CtxKeyTx{}).(boil.Transactor); ok {
-		return &trans{ctx: ctx, errLog: errLog}, nil
+	if tx, ok := servicectx.GetTx(ctx).(boil.Transactor); ok {
+		return &trans{ctx: ctx, tx: tx, errLog: errLog}, nil
 	}
 
 	// 没找到，则new
@@ -34,7 +36,7 @@ func NewTransactor(ctx context.Context, logger types.LoggerProvider) (Transactor
 		return nil, err
 	}
 
-	return &trans{ctx: context.WithValue(ctx, types.CtxKeyTx{}, tx), errLog: errLog}, nil
+	return &trans{ctx: servicectx.AddTx(ctx, tx), tx: tx, errLog: errLog}, nil
 }
 
 func (t *trans) Context() context.Context {
@@ -42,27 +44,15 @@ func (t *trans) Context() context.Context {
 }
 
 func (t *trans) Finalize(err error) {
-	tx := t.getTx()
-	if tx == nil {
-		return
-	}
-
 	// need commit
 	if err != nil {
-		e := tx.Rollback()
+		e := t.tx.Rollback()
 		t.errLog("db roll back", "err", err, "rollback", e)
 		return
 	}
 
-	e := tx.Commit()
+	e := t.tx.Commit()
 	if e != nil {
 		t.errLog("db commit", "err", e)
 	}
-}
-
-func (t *trans) getTx() boil.Transactor {
-	if tx, ok := t.ctx.Value(types.CtxKeyTx{}).(boil.Transactor); ok {
-		return tx
-	}
-	return nil
 }
