@@ -3,7 +3,8 @@ package sqlboiler
 import (
 	"context"
 
-	commonTypes "github.com/hdget/common/types"
+	"github.com/hdget/common/constant"
+	"github.com/hdget/common/meta"
 )
 
 // Tdb Tenant db
@@ -26,8 +27,5 @@ func NewTdb(ctx context.Context) Tdb {
 }
 
 func (impl *tdbImpl) Tid() int64 {
-	if tid, ok := impl.ctx.Value(commonTypes.CtxKeyTid{}).(int64); ok {
-		return tid
-	}
-	return 0
+	return meta.FromServiceContext(impl.ctx).GetInt64(constant.MetaKeyTid)
 }
