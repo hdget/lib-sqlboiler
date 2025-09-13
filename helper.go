@@ -57,7 +57,10 @@ func (b baseHelper) IfNull(column string, defaultValue any, args ...string) stri
 		v := reflectUtils.Indirect(defaultValue)
 		switch vv := reflect.ValueOf(v); vv.Kind() {
 		case reflect.String:
-			asValue = b.Quote(vv.String(), true)
+			asValue = vv.String()
+			if asValue == "" {
+				asValue = "''"
+			}
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			asValue = fmt.Sprintf("%d", v)
 		case reflect.Float32, reflect.Float64:
