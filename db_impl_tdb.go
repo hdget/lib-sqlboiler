@@ -3,7 +3,6 @@ package sqlboiler
 import (
 	"context"
 
-	"github.com/hdget/common/constant"
 	"github.com/hdget/common/meta"
 )
 
@@ -27,5 +26,5 @@ func NewTdb(ctx context.Context) Tdb {
 }
 
 func (impl *tdbImpl) Tid() int64 {
-	return meta.FromServiceContext(impl.ctx).GetInt64(constant.MetaKeyTid)
+	return meta.FromServiceContext(impl.ctx).GetTid()
 }
