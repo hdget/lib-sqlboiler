@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/aarondl/sqlboiler/v4/boil"
-	"github.com/hdget/common/servicectx"
 	"github.com/hdget/common/types"
 	loggerUtils "github.com/hdget/utils/logger"
 )
@@ -26,7 +25,7 @@ func NewTransactor(ctx context.Context, logger types.LoggerProvider) (Transactor
 		errLog = logger.Error
 	}
 
-	if tx, ok := servicectx.GetTx(ctx).(boil.Transactor); ok {
+	if tx, ok := ctxGetTx(ctx); ok {
 		return &trans{ctx: ctx, tx: tx, errLog: errLog}, nil
 	}
 
@@ -36,7 +35,7 @@ func NewTransactor(ctx context.Context, logger types.LoggerProvider) (Transactor
 		return nil, err
 	}
 
-	return &trans{ctx: servicectx.AddTx(ctx, tx), tx: tx, errLog: errLog}, nil
+	return &trans{ctx: ctxAddTx(ctx, tx), tx: tx, errLog: errLog}, nil
 }
 
 func (t *trans) Context() context.Context {
