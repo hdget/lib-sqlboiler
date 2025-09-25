@@ -1,8 +1,8 @@
 package sqlboiler
 
 import (
-	"context"
 	"github.com/aarondl/sqlboiler/v4/boil"
+	"github.com/hdget/common/biz"
 )
 
 type Db interface {
@@ -11,12 +11,12 @@ type Db interface {
 }
 
 type dbImpl struct {
-	ctx    context.Context
+	ctx    biz.Context
 	copier DbCopier
 }
 
 func (impl *dbImpl) Executor() boil.Executor {
-	if tx, ok := ctxGetTx(impl.ctx); ok {
+	if tx, ok := impl.ctx.GetTx().(boil.Transactor); ok {
 		return tx
 	}
 	return boil.GetDB()
