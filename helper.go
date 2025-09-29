@@ -2,6 +2,9 @@ package sqlboiler
 
 import (
 	"fmt"
+	"reflect"
+	"time"
+
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/aarondl/sqlboiler/v4/queries/qm"
 	"github.com/hdget/common/protobuf"
@@ -9,8 +12,6 @@ import (
 	jsonUtils "github.com/hdget/utils/json"
 	"github.com/hdget/utils/paginator"
 	reflectUtils "github.com/hdget/utils/reflect"
-	"reflect"
-	"time"
 )
 
 type SQLHelper interface {
@@ -21,7 +22,7 @@ type SQLHelper interface {
 	InnerJoin(joinTable string, args ...string) *JoinClauseBuilder
 	LeftJoin(joinTable string, args ...string) *JoinClauseBuilder
 	OrderBy() *OrderByHelper
-	Quote(s string, needSplit bool) string
+	Quote(s string, splitWord ...bool) string // 默认quote整个字符串，true否则将分割字符串中的单词，每个单词进行quote
 	SelectAll(tableColumns any) qm.QueryMod
 }
 
@@ -36,7 +37,7 @@ func (b baseHelper) SelectAll(tableColumns any) qm.QueryMod {
 	selectColumns := make([]string, v.NumField())
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i).String()
-		selectColumns[i] = fmt.Sprintf("%s as %s", b.Quote(field, true), b.Quote(field, false))
+		selectColumns[i] = fmt.Sprintf("%s as %s", b.Quote(field, true), b.Quote(field))
 	}
 
 	return qm.Select(
@@ -85,8 +86,8 @@ func (b baseHelper) SUM(col string, args ...string) string {
 	return b.IfNull(fmt.Sprintf("SUM(%s)", b.Quote(col, true)), 0, args...)
 }
 
-func (b baseHelper) Quote(s string, needSplit bool) string {
-	return escape(s, b.identifierQuote, needSplit)
+func (b baseHelper) Quote(s string, splitWord ...bool) string {
+	return escape(s, b.identifierQuote, splitWord...)
 }
 
 func (b baseHelper) InnerJoin(joinTable string, asTable ...string) *JoinClauseBuilder {

@@ -2,9 +2,9 @@ package sqlboiler
 
 import "strings"
 
-func escape(s, quote string, needSplit bool) string {
+func escape(s, quote string, splitWord ...bool) string {
 	var builder strings.Builder
-	if needSplit {
+	if len(splitWord) > 0 && splitWord[0] {
 		// 1. 分割字符串
 		parts := strings.Split(s, ".")
 		// 2. 使用Builder高效构建
