@@ -34,6 +34,9 @@ func NewTransactor(ctx biz.Context, logger types.LoggerProvider) (Transactor, er
 		return nil, err
 	}
 
+	// ctx保存transaction
+	ctx.SetTx(tx)
+
 	return &trans{tx: tx, errLog: errLog}, nil
 }
 
