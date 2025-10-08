@@ -2,17 +2,18 @@ package sqlboiler
 
 import (
 	"fmt"
+	"math"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/aarondl/sqlboiler/v4/types"
 	"github.com/elliotchance/pie/v2"
 	jsonUtils "github.com/hdget/utils/json"
 	"github.com/hdget/utils/text"
 	"github.com/iancoleman/strcase"
 	"github.com/pkg/errors"
-	"math"
-	"reflect"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type DbCopier interface {
@@ -273,7 +274,11 @@ func (impl *dbCopierImpl) copyFromStruct(to reflect.Value, toType reflect.Type, 
 				impl.handleJsonField(destField, srcField.Interface(), jsonUtils.JsonArray)
 			} else {
 				srcField, _ = indirect(srcField)
-				if err := impl.setField(destField, srcField, srcField.Interface()); err != nil {
+				var srcValue any
+				if !srcField.IsNil() {
+					srcValue = srcField.Interface()
+				}
+				if err := impl.setField(destField, srcField, srcValue); err != nil {
 					return errors.Wrapf(err, "set field '%s'", srcField.Type().Name())
 				}
 			}
