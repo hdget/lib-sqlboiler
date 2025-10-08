@@ -266,7 +266,7 @@ func (impl *dbCopierImpl) copyFromStruct(to reflect.Value, toType reflect.Type, 
 			// 类型转换并设置字段值
 			if _, exist := impl.autoIncrFields[destFormattedFieldName]; exist {
 				if err := impl.incrField(destField, srcField.Interface()); err != nil {
-					return errors.Wrap(err, "increase field value")
+					return errors.Wrap(err, "increase struct field value")
 				}
 			} else if _, exist := impl.jsonObjectFields[destFormattedFieldName]; exist {
 				impl.handleJsonField(destField, srcField.Interface(), jsonUtils.JsonObject)
@@ -275,11 +275,11 @@ func (impl *dbCopierImpl) copyFromStruct(to reflect.Value, toType reflect.Type, 
 			} else {
 				srcField, _ = indirect(srcField)
 				var srcValue any
-				if !srcField.IsNil() {
+				if srcField.IsValid() {
 					srcValue = srcField.Interface()
 				}
 				if err := impl.setField(destField, srcField, srcValue); err != nil {
-					return errors.Wrapf(err, "set field '%s'", srcField.Type().Name())
+					return errors.Wrapf(err, "copy to struct field '%s'", destFieldName)
 				}
 			}
 
