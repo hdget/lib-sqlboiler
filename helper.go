@@ -3,6 +3,7 @@ package sqlboiler
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/aarondl/sqlboiler/v4/boil"
@@ -51,35 +52,39 @@ func (b baseHelper) IfNull(column string, defaultValue any, args ...string) stri
 		alias = args[0]
 	}
 
-	var asValue string
+	var realDefaultValue string
 	if defaultValue == nil {
-		asValue = "''"
+		realDefaultValue = "''"
 	} else {
 		v := reflectUtils.Indirect(defaultValue)
 		switch vv := reflect.ValueOf(v); vv.Kind() {
 		case reflect.String:
-			asValue = vv.String()
-			if asValue == "" {
-				asValue = "''"
+			realDefaultValue = vv.String()
+			if realDefaultValue == "" {
+				realDefaultValue = "''"
 			}
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			asValue = fmt.Sprintf("%d", v)
+			realDefaultValue = fmt.Sprintf("%d", v)
 		case reflect.Float32, reflect.Float64:
-			asValue = fmt.Sprintf("%.4f", v)
+			realDefaultValue = fmt.Sprintf("%.4f", v)
 		case reflect.Slice:
 			if vv.Type().Elem().Kind() == reflect.Uint8 {
 				if jsonUtils.IsEmptyJsonObject(vv.Bytes()) {
-					asValue = "'{}'"
+					realDefaultValue = "'{}'"
 				} else if jsonUtils.IsEmptyJsonArray(vv.Bytes()) {
-					asValue = "'[]'"
+					realDefaultValue = "'[]'"
 				} else {
-					asValue = fmt.Sprintf("'%s'", convert.BytesToString(vv.Bytes()))
+					realDefaultValue = fmt.Sprintf("'%s'", convert.BytesToString(vv.Bytes()))
 				}
 			}
 		}
 	}
 
-	return fmt.Sprintf("%s(%s, %s) AS %s", b.functionIfNull, b.Quote(column, true), asValue, b.Quote(alias, false))
+	if strings.Contains(column, "(") { // 如果是函数表达式，不需要转义
+		return fmt.Sprintf("%s(%s, %s) AS %s", b.functionIfNull, column, realDefaultValue, b.Quote(alias, false))
+	}
+
+	return fmt.Sprintf("%s(%s, %s) AS %s", b.functionIfNull, b.Quote(column, true), realDefaultValue, b.Quote(alias, false))
 }
 
 func (b baseHelper) SUM(col string, args ...string) string {
