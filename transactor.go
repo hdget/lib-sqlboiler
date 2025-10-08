@@ -11,6 +11,7 @@ import (
 
 type Transactor interface {
 	Finalize(err error)
+	Executor() types.DbExecutor
 }
 
 type trans struct {
@@ -38,6 +39,10 @@ func NewTransactor(ctx biz.Context, logger types.LoggerProvider) (Transactor, er
 	ctx.SetTx(tx)
 
 	return &trans{tx: tx, errLog: errLog}, nil
+}
+
+func (t *trans) Executor() types.DbExecutor {
+	return t.tx
 }
 
 func (t *trans) Finalize(err error) {
