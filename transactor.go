@@ -25,8 +25,10 @@ func NewTransactor(ctx biz.Context, logger types.LoggerProvider) (Transactor, er
 		errLog = logger.Error
 	}
 
-	if tx, ok := ctx.GetTx().(boil.Transactor); ok {
-		return &trans{tx: tx, errLog: errLog}, nil
+	if v, ok := ctx.Value(biz.ContextKeyDbTransaction); ok {
+		if tx, ok := v.(boil.Transactor); ok {
+			return &trans{tx: tx, errLog: errLog}, nil
+		}
 	}
 
 	// 没找到，则new
@@ -36,7 +38,7 @@ func NewTransactor(ctx biz.Context, logger types.LoggerProvider) (Transactor, er
 	}
 
 	// ctx保存transaction
-	ctx.SetTx(tx)
+	_ = ctx.WithValue(biz.ContextKeyDbTransaction, tx)
 
 	return &trans{tx: tx, errLog: errLog}, nil
 }
