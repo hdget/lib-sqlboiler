@@ -1,7 +1,7 @@
 package sqlboiler
 
 import (
-	"context"
+	"github.com/hdget/common/biz"
 )
 
 type Gdb interface {
@@ -12,7 +12,7 @@ type gdbImpl struct {
 	*dbImpl
 }
 
-func NewGdb(ctx context.Context) Gdb {
+func NewGdb(ctx biz.Context) Gdb {
 	return &gdbImpl{
 		dbImpl: &dbImpl{
 			ctx:    ctx,
