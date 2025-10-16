@@ -4,29 +4,31 @@ import (
 	"context"
 
 	"github.com/aarondl/sqlboiler/v4/boil"
+	"github.com/hdget/common/biz"
 	"github.com/hdget/common/types"
 	loggerUtils "github.com/hdget/utils/logger"
 )
 
 type Transactor interface {
 	Finalize(err error)
-	Context() context.Context
+	Executor() types.DbExecutor
 }
 
 type trans struct {
 	tx     boil.Transactor
-	ctx    context.Context
 	errLog func(msg string, kvs ...any)
 }
 
-func NewTransactor(ctx context.Context, logger types.LoggerProvider) (Transactor, error) {
+func NewTransactor(ctx biz.Context, logger types.LoggerProvider) (Transactor, error) {
 	errLog := loggerUtils.Error
 	if logger == nil {
 		errLog = logger.Error
 	}
 
-	if tx, ok := ctxGetTx(ctx); ok {
-		return &trans{ctx: ctx, tx: tx, errLog: errLog}, nil
+	if v, ok := ctx.Value(biz.ContextKeyDbTransaction); ok {
+		if tx, ok := v.(boil.Transactor); ok {
+			return &trans{tx: tx, errLog: errLog}, nil
+		}
 	}
 
 	// 没找到，则new
@@ -35,11 +37,14 @@ func NewTransactor(ctx context.Context, logger types.LoggerProvider) (Transactor
 		return nil, err
 	}
 
-	return &trans{ctx: ctxAddTx(ctx, tx), tx: tx, errLog: errLog}, nil
+	// ctx保存transaction
+	_ = ctx.WithValue(biz.ContextKeyDbTransaction, tx)
+
+	return &trans{tx: tx, errLog: errLog}, nil
 }
 
-func (t *trans) Context() context.Context {
-	return t.ctx
+func (t *trans) Executor() types.DbExecutor {
+	return t.tx
 }
 
 func (t *trans) Finalize(err error) {

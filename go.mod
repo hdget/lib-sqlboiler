@@ -5,7 +5,7 @@ go 1.23.1
 require (
 	github.com/aarondl/sqlboiler/v4 v4.19.5
 	github.com/elliotchance/pie/v2 v2.9.1
-	github.com/hdget/common v0.1.3
+	github.com/hdget/common v0.1.5
 	github.com/hdget/utils v0.0.4
 	github.com/iancoleman/strcase v0.3.0
 	github.com/pkg/errors v0.9.1
@@ -31,6 +31,7 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.26.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
 	google.golang.org/grpc v1.75.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
