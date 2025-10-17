@@ -29,8 +29,8 @@ github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek
 github.com/golang/protobuf v1.5.4/go.mod h1:lnTiLA8Wa4RWRcIUkrtSVa5nRhsEGBg48fD6rSs7xps=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
-github.com/hdget/common v0.1.5 h1:aZmdayI3YOH8WSuV2l5l6y4vMVo1mXJGJ+77mCyocHw=
-github.com/hdget/common v0.1.5/go.mod h1:8FURnweoOh0mFwxB9R2PHfOXfLEuiDU7Zr3WWmSk/nc=
+github.com/hdget/common v0.1.7 h1:ZX1CWA1n+0sN/dKLIEtvWcdFenqqobnZkwnaWIQjsPU=
+github.com/hdget/common v0.1.7/go.mod h1:8FURnweoOh0mFwxB9R2PHfOXfLEuiDU7Zr3WWmSk/nc=
 github.com/hdget/utils v0.0.4 h1:yziS8MTwF62lHeWveh013iQjjeSkgBomr8DlmIWkd/8=
 github.com/hdget/utils v0.0.4/go.mod h1:1cmY9zQ+KBpsaf58IJQ3kwv2+1NC4dCFLnT6qQG4028=
 github.com/iancoleman/strcase v0.3.0 h1:nTXanmYxhfFAMjZL34Ov6gkzEsSJZ5DbhxWjvSASxEI=

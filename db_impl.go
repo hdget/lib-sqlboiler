@@ -16,7 +16,7 @@ type dbImpl struct {
 }
 
 func (impl *dbImpl) Executor() boil.Executor {
-	if tx, ok := impl.ctx.Tx().Get().(boil.Transactor); ok {
+	if tx, ok := impl.ctx.Transactor().Get().(boil.Transactor); ok {
 		return tx
 	}
 	return boil.GetDB()

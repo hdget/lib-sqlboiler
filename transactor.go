@@ -11,7 +11,6 @@ import (
 
 type Transactor interface {
 	Finalize(err error)
-	Executor() types.DbExecutor
 }
 
 type trans struct {
@@ -28,8 +27,8 @@ func NewTransactor(ctx biz.Context, logger types.LoggerProvider) (Transactor, er
 
 	var err error
 	var transactor boil.Transactor
-	if tx, ok := ctx.Tx().Get().(boil.Transactor); ok {
-		transactor = tx
+	if v, ok := ctx.Transactor().Get().(boil.Transactor); ok {
+		transactor = v
 	} else { // 没找到，则new
 		transactor, err = boil.BeginTx(context.Background(), nil)
 		if err != nil {
@@ -38,23 +37,19 @@ func NewTransactor(ctx biz.Context, logger types.LoggerProvider) (Transactor, er
 	}
 
 	// ctx保存transaction
-	ctx.Tx().Ref(transactor)
+	ctx.Transactor().Ref(transactor)
 
 	return &trans{tx: transactor, ctx: ctx, errLog: errLog}, nil
 }
 
-func (t *trans) Executor() types.DbExecutor {
-	return t.tx
-}
-
 func (t *trans) Finalize(err error) {
-	if needFinalize := t.ctx.Tx().Unref(); !needFinalize {
+	if needFinalize := t.ctx.Transactor().Unref(); !needFinalize {
 		return
 	}
 
 	// transaction执行完以后需要从ctx中移除
 	defer func() {
-		t.ctx.Tx().Destroy()
+		t.ctx.Transactor().Destroy()
 	}()
 	// need commit
 	if err != nil {
