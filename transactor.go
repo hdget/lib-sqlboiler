@@ -16,31 +16,31 @@ type Transactor interface {
 
 type trans struct {
 	tx     boil.Transactor
+	ctx    biz.Context
 	errLog func(msg string, kvs ...any)
 }
 
 func NewTransactor(ctx biz.Context, logger types.LoggerProvider) (Transactor, error) {
 	errLog := loggerUtils.Error
-	if logger == nil {
+	if logger != nil {
 		errLog = logger.Error
 	}
 
-	if v, ok := ctx.Value(biz.ContextKeyDbTransaction); ok {
-		if tx, ok := v.(boil.Transactor); ok {
-			return &trans{tx: tx, errLog: errLog}, nil
+	var err error
+	var transactor boil.Transactor
+	if tx, ok := ctx.Tx().Get().(boil.Transactor); ok {
+		transactor = tx
+	} else { // 没找到，则new
+		transactor, err = boil.BeginTx(context.Background(), nil)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	// 没找到，则new
-	tx, err := boil.BeginTx(context.Background(), nil)
-	if err != nil {
-		return nil, err
-	}
-
 	// ctx保存transaction
-	_ = ctx.WithValue(biz.ContextKeyDbTransaction, tx)
+	ctx.Tx().Ref(transactor)
 
-	return &trans{tx: tx, errLog: errLog}, nil
+	return &trans{tx: transactor, ctx: ctx, errLog: errLog}, nil
 }
 
 func (t *trans) Executor() types.DbExecutor {
@@ -48,6 +48,14 @@ func (t *trans) Executor() types.DbExecutor {
 }
 
 func (t *trans) Finalize(err error) {
+	if needFinalize := t.ctx.Tx().Unref(); !needFinalize {
+		return
+	}
+
+	// transaction执行完以后需要从ctx中移除
+	defer func() {
+		t.ctx.Tx().Destroy()
+	}()
 	// need commit
 	if err != nil {
 		e := t.tx.Rollback()
