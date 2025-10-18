@@ -2,6 +2,7 @@ package sqlboiler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/hdget/common/biz"
@@ -27,7 +28,7 @@ func NewTransactor(ctx biz.Context, logger types.LoggerProvider) (Transactor, er
 
 	var err error
 	var transactor boil.Transactor
-	if v, ok := ctx.Transactor().Get().(boil.Transactor); ok {
+	if v, ok := ctx.Transactor().GetTx().(boil.Transactor); ok {
 		transactor = v
 	} else { // 没找到，则new
 		transactor, err = boil.BeginTx(context.Background(), nil)
@@ -43,14 +44,17 @@ func NewTransactor(ctx biz.Context, logger types.LoggerProvider) (Transactor, er
 }
 
 func (t *trans) Finalize(err error) {
-	if needFinalize := t.ctx.Transactor().Unref(); !needFinalize {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v", r)
+		}
+		t.ctx.Transactor().Unref()
+	}()
+
+	if needFinalize := t.ctx.Transactor().ReachRoot(); !needFinalize {
 		return
 	}
 
-	// transaction执行完以后需要从ctx中移除
-	defer func() {
-		t.ctx.Transactor().Destroy()
-	}()
 	// need commit
 	if err != nil {
 		e := t.tx.Rollback()
