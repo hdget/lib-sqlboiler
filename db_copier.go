@@ -43,9 +43,10 @@ var (
 
 	// editSkipFields 编辑时默认忽略的字段
 	createSkipFields = map[string]struct{}{
-		"version":    {},
 		"created_at": {},
 		"updated_at": {},
+		"version":    {},
+		"tid":        {},
 		"deleted_at": {},
 		"r":          {},
 		"l":          {},
@@ -53,11 +54,12 @@ var (
 
 	// editSkipFields 编辑时默认忽略的字段
 	editSkipFields = map[string]struct{}{
-		"id":         {},
-		"sn":         {},
-		"version":    {},
 		"created_at": {},
 		"updated_at": {},
+		"version":    {},
+		"tid":        {},
+		"id":         {},
+		"sn":         {},
 		"deleted_at": {},
 		"r":          {},
 		"l":          {},
